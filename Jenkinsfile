@@ -1,35 +1,37 @@
-pipeline {
-    agent any 
-    
+pipeline{
+    agent{ label 'linux' }
     stages{
-        stage("Clone Code"){
-            steps {
-                echo "Cloning the code"
-                git url:"https://github.com/NirmalNaveen20/django-notes-app.git", branch: "main"
+        stage('Clone the code from the repo'){
+            steps{
+                echo 'Cloning the code from the repo'
+                git branch: 'main', url: 'https://github.com/impankaj91/jenkins-pipeline-sampleapp.git'
             }
         }
-        stage("Build"){
-            steps {
-                echo "Building the image"
-                sh "docker build -t my-note-app ."
+
+        stage('Build Code using the Docker'){
+            steps{
+                echo 'Building the docker image'
+                sh 'docker build -t note-app:latest .'
             }
         }
-        stage("Push to Docker Hub"){
-            steps {
-                echo "Pushing the image to docker hub via EC2"
-                withCredentials([usernamePassword(credentialsId:"dockerHub",passwordVariable:"dockerHubPass",usernameVariable:"dockerHubUser")]){
-                sh "docker tag my-note-app ${env.dockerHubUser}/my-note-app:latest"
-                sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
-                sh "docker push ${env.dockerHubUser}/my-note-app:latest"
+
+        stage('Push image to DockerHub'){
+            steps{
+                withCredentials([usernamePassword(credentialsId:"DockerHub",passwordVariable:"dockerHubPass",usernameVariable:"dockerHubUser")]){
+                echo "Pushing the image to dockerhub - ${env.dockerHubUser}"
+                sh """
+                docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}
+                docker tag note-app:latest ${env.dockerHubUser}/note-app:latest
+                docker push ${env.dockerHubUser}/note-app:latest 
+                """
                 }
             }
         }
-        stage("Deploy"){
-            steps {
-                echo "Deploying the container"
-                sh "docker-compose down && docker-compose up -d"
-                
-            }
+
+        stage('Deploy'){
+            steps{
+            echo 'Deploying code to the server'
+            sh 'docker-compose down && docker-compose up -d'}
         }
     }
 }
